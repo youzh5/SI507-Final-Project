@@ -31,6 +31,7 @@ html_text = file.read()
 soup = BeautifulSoup(html_text, 'html.parser')
 file.close()
 
+################Extracting all open resorts###################
 all_open = soup.find_all('div', class_="styles_outer__3Km0M")
 name_list = []
 updata_time = []
@@ -52,6 +53,7 @@ for resorts in all_open:
     open_lifts.append(resorts.contents[2].contents[0].contents[1].contents[3].contents[1].contents[0])
     
 
+######################Extract all closed resorts####################################
 all_closed = soup.find_all('div', class_="styles_box__3bpbO")
 closed_resorts = []
 open_dates = []
@@ -112,4 +114,4 @@ for i in range(len(open_dates)):
     open_dates[i] = datetime_object
 
 
-print(all_divs)
+print()
