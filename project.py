@@ -5,7 +5,7 @@ import requests
 from requests.models import Response
 import json
 
-
+'''
 class Resort():
     def __init__(self, resort_name, website = None):
         self.resort_name = resort_name
@@ -27,7 +27,7 @@ class ClosedResort(Resort):
     def __init__(self, resort_name, website, open_date):
         super().__init__(resort_name, website)
         self.open_date = open_date
-        
+'''        
         
 
 
@@ -39,7 +39,7 @@ file.close()
 ################Extracting all open resorts###################
 all_open = soup.find_all('div', class_="styles_outer__3Km0M")
 name_list = []
-updata_time = []
+update_time = []
 snow_fall = []
 snow_fall_time = []
 snow_depth = []
@@ -48,7 +48,7 @@ open_trails = []
 open_lifts = []
 for resorts in all_open:
     name_list.append(resorts.contents[2].contents[0].contents[0].contents[0].contents[0])
-    updata_time.append(resorts.contents[2].contents[0].contents[0].contents[1].contents[0])
+    update_time.append(resorts.contents[2].contents[0].contents[0].contents[1].contents[0])
     #Other info resorts.contents[2].contents[0].contents[1]
     snow_fall.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[1].contents[0])
     snow_fall_time.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[2].contents[0])
@@ -66,9 +66,6 @@ for resorts in all_closed:
     closed_resorts.append(resorts.contents[1].contents[0].contents[0])
     open_dates.append(resorts.contents[1].contents[1].contents[0])
 
-website_list = len(name_list)*[None]
-open_resort_list = []
-closed_resort_list = []
 
 ########Data Processing###############
 
@@ -92,8 +89,8 @@ for i in range(len(open_trails)):
         open_trails[i] = None
         total_trails.append(None)
 
-for i in range(len(updata_time)):
-    updata_time[i] = int(updata_time[i].replace(" hours ago", ""))
+for i in range(len(update_time)):
+    update_time[i] = int(update_time[i].replace(" hours ago", ""))
     
 for i in range(len(snow_fall_time)):
     if (snow_fall_time[i] == "Today"):
@@ -173,9 +170,91 @@ params = {
     "key": secrete.api_key
 }
 
-for names in name_list + closed_resorts:
-    params["input"] = names
-    result = cache_control(base_url, params)
 
+###################################DATA Presentation#############################
+open_dict = {}
+
+for i in range(len(name_list)):
+    params["input"] = name_list[i]
+    result = cache_control(base_url, params)
+    local_dict = {}
+    local_dict["location"] = result["candidates"][0]["geometry"]['location']
+    local_dict["rating"] = result["candidates"][0]["rating"]
+    local_dict["snow_fall"] = snow_fall[i]
+    local_dict["snow_fall_time"] = snow_fall_time[i]
+    local_dict["snow_depth"] = snow_depth[i]
+    local_dict["surface_status"] = surface_status[i]
+    local_dict["update_time"] = update_time[i]
+    local_dict["total_lifts"] = total_lifts[i]
+    local_dict["open_lifts"] = open_lifts[i]
+    local_dict["total_trails"] = total_trails[i]
+    local_dict["open_trails"] = open_trails[i]
+    open_dict[name_list[i]] = local_dict
+
+closed_dict = {}
+
+for i in range(len(closed_resorts)):
+    params["input"] = closed_resorts[i]
+    result = cache_control(base_url, params)
+    local_dict = {}
+    local_dict["location"] = result["candidates"][0]["geometry"]['location']
+    try:
+        local_dict["rating"] = result["candidates"][0]["rating"]
+    except:
+        local_dict["rating"] = None
+    local_dict["open_dates"] = open_dates[i]
+
+######################Tree Construct#########################
+class Node():
+    def __init__(self, left = None, right = None, isQuestion = False, data = None, name = None):
+        self.left = left
+        self.right = right
+        self.isQuestion = isQuestion
+        self.data = data
+        self.name = name
+        
+def questionEstablisher():
+    ###################question nodes
+    highest_rating = Node(isQuestion=True, data="Do you want to look for resort with the highest rating?[Y/N]")
+    most_recent_snow = Node(isQuestion=True, data="Do you want to look for resort with the most snow fall?[Y/N]")
+    most_lifts_open = Node(isQuestion=True, data="Do you want to look for resort with the most lifts open?[Y/N]")
+    most_total_trails = Node(isQuestion=True, data="Do you want to look for resort with the most total trails?[Y/N]")
+    more_snow = Node(isQuestion=True, data="Do you want to look for resort with the more snow depth?[Y/N]")
+    
+    #Data nodes
+    nubs = Node(isQuestion=False, data=open_dict["Nubs Nob Ski Area"], name="Nubs Nob Ski Area")
+    brule = Node(isQuestion=False, data=open_dict["Ski Brule"], name="Ski Brule")
+    holly = Node(isQuestion=False, data=open_dict["Mount Holly"], name="Mount Holly")
+    boyne = Node(isQuestion=False, data=open_dict["Boyne Mountain Resort"], name="Boyne Mountain Resort")
+    brighton = Node(isQuestion=False, data=open_dict["Mt. Brighton"], name="Mt. Brighton")
+    bsr = Node(isQuestion=False, data=open_dict["Big Snow Resort - Blackjack"], name="Big Snow Resort - Blackjack")
+    
+    #Constructing the tree
+    highest_rating.left = nubs
+    highest_rating.right = most_recent_snow
+    most_recent_snow.left = brule
+    most_recent_snow.right = most_lifts_open
+    most_lifts_open.left = holly
+    most_lifts_open.right = most_total_trails
+    most_total_trails.left = boyne
+    most_total_trails.right = more_snow
+    more_snow.left = brighton
+    more_snow.right = bsr
+    
+    current_node = highest_rating
+    
+    while current_node.isQuestion:
+        answer = input(current_node.data)
+        if (answer.lower() == 'y'):
+            current_node = current_node.left
+        elif (answer.lower() == 'n'):
+            current_node = current_node.right
+        else:
+            print("This input is invalid. Please try again.")
+            
+    print(current_node.name)
+        
+questionEstablisher()
+    
 
 print()
