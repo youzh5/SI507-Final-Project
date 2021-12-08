@@ -1,5 +1,10 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
+import secrete
+import requests
+from requests.models import Response
+import json
+
 
 class Resort():
     def __init__(self, resort_name, website = None):
@@ -112,6 +117,65 @@ for i in range(len(open_dates)):
     open_dates[i] = open_dates[i].replace("Opening ", "")
     datetime_object = datetime.strptime(open_dates[i], "%Y %b %d")
     open_dates[i] = datetime_object
+    
+    
+    
+#################################API PART##########################
+###################################################################
+
+def open_cache(file_name):
+    try:
+        file = open(file_name, 'r')
+        dict_out = json.loads(file.read())
+        file.close()
+    except:
+        dict_out = {}
+    return dict_out
+
+def caching(dict_in, file_name):
+    dumped = json.dumps(dict_in)
+    file = open(file_name, 'w')
+    file.write(dumped)
+    file.close()
+    
+
+def sudo_url(base_url, params):
+    sudo_url = base_url + "&"
+    for key in params.keys():
+        if key != "key":
+            sudo_url = sudo_url + (f'{key}={params[key]}&')
+    return sudo_url
+
+def make_request(base_url, params):
+    response = requests.get(base_url, params=params)
+    result = response.json()
+    return result
+
+def cache_control(base_url, params, cache_name="default_cache.json"):
+    cache_dict = open_cache(cache_name)
+    sudo_url_in = sudo_url(base_url, params)
+    if sudo_url_in in cache_dict.keys():
+        result = cache_dict[sudo_url_in]
+    else:
+        result = make_request(base_url, params)
+        cache_dict[sudo_url_in] = result
+    caching(cache_dict, cache_name)
+    return result
+    
+    
+
+base_url = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
+params = {
+    "fields": "formatted_address,name,rating,opening_hours,geometry",
+    "input": "",
+    "inputtype": "textquery",
+    "contact": "website",
+    "key": secrete.api_key
+}
+
+for names in name_list + closed_resorts:
+    params["input"] = names
+    result = cache_control(base_url, params)
 
 
 print()
