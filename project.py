@@ -4,6 +4,7 @@ import secrete
 import requests
 from requests.models import Response
 import json
+from PIL import Image
 
 '''
 class Resort():
@@ -31,8 +32,8 @@ class ClosedResort(Resort):
         
 
 
-file = open('snow_report.html')
-html_text = file.read()
+file = open('snow_report.html','rb')
+html_text = file.read().decode('utf8')
 soup = BeautifulSoup(html_text, 'html.parser')
 file.close()
 
@@ -252,9 +253,25 @@ def questionEstablisher():
         else:
             print("This input is invalid. Please try again.")
             
-    print(current_node.name)
+    return current_node
         
-questionEstablisher()
+map_base_url = "https://maps.googleapis.com/maps/api/staticmap"
+map_params = {
+    "center": "Ann+Arbor",
+    "zoom": "6",
+    "size": "1200x1200",
+    "maptype": "roadmap",
+    "key": secrete.api_key,
+    "markers": []
+}
+
+map_params["markers"] = [str(open_dict["Boyne Mountain Resort"]["location"]["lat"]) + "," + str(open_dict["Boyne Mountain Resort"]["location"]["lng"]), \
+    str(open_dict["Ski Brule"]["location"]["lat"]) + "," + str(open_dict["Ski Brule"]["location"]["lng"])]
+
+response = requests.get(map_base_url, map_params)
+open("maps_temp.png", "wb").write(response.content)
+im = Image.open("maps_temp.png","r")
+im.show()
     
 
 print()
