@@ -11,97 +11,13 @@ This program is for the user to check snow status.
 The program will display location and name of the resort by the user's preference.
 '''        
         
-
-
-file = open('snow_report.html','rb')
-html_text = file.read().decode('utf8')
-soup = BeautifulSoup(html_text, 'html.parser')
-file.close()
-
-################Extracting all open resorts###################
-all_open = soup.find_all('div', class_="styles_outer__3Km0M")
-name_list = []
-update_time = []
-snow_fall = []
-snow_fall_time = []
-snow_depth = []
-surface_status = []
-open_trails = []
-open_lifts = []
-for resorts in all_open:
-    name_list.append(resorts.contents[2].contents[0].contents[0].contents[0].contents[0])
-    update_time.append(resorts.contents[2].contents[0].contents[0].contents[1].contents[0])
-    #Other info resorts.contents[2].contents[0].contents[1]
-    snow_fall.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[1].contents[0])
-    snow_fall_time.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[2].contents[0])
-    snow_depth.append(resorts.contents[2].contents[0].contents[1].contents[1].contents[1].contents[0])
-    surface_status.append(resorts.contents[2].contents[0].contents[1].contents[1].contents[2].contents[0])
-    open_trails.append(resorts.contents[2].contents[0].contents[1].contents[2].contents[1].contents[0])
-    open_lifts.append(resorts.contents[2].contents[0].contents[1].contents[3].contents[1].contents[0])
-    
-
-######################Extract all closed resorts####################################
-all_closed = soup.find_all('div', class_="styles_box__3bpbO")
-closed_resorts = []
-open_dates = []
-for resorts in all_closed:
-    closed_resorts.append(resorts.contents[1].contents[0].contents[0])
-    open_dates.append(resorts.contents[1].contents[1].contents[0])
-
-
-########Data Processing###############
-
-#########Open Resorts##################
-for i in range(len(snow_fall)):
-    snow_fall[i] = int(snow_fall[i].replace("\"",""))
-
-total_lifts = []
-for i in range(len(open_lifts)):
-    two_num = open_lifts[i].split("/")
-    open_lifts[i] = int(two_num[0])
-    total_lifts.append(int(two_num[1]))
-
-total_trails = []
-for i in range(len(open_trails)):
-    try:
-        two_num = open_trails[i].split("/")
-        open_trails[i] = int(two_num[0])
-        total_trails.append(int(two_num[1]))
-    except:
-        open_trails[i] = None
-        total_trails.append(None)
-
-for i in range(len(update_time)):
-    update_time[i] = int(update_time[i].replace(" hours ago", ""))
-    
-for i in range(len(snow_fall_time)):
-    if (snow_fall_time[i] == "Today"):
-        datetime_object = datetime.strptime("Dec 5 2021", "%b %d %Y")
-    else:
-        datetime_object = datetime.strptime(snow_fall_time[i] + " 2021", "%b %d %Y")
-    snow_fall_time[i] = datetime_object
-    
-for i in range(len(snow_depth)):
-    snow_depth[i] = snow_depth[i].replace("\"", "")
-    if ("-" in snow_depth[i]):
-        two_num = snow_depth[i].split("-")
-        snow_depth[i] = [int(two_num[0]), int(two_num[1])]
-        if snow_depth[i][0] == snow_depth[i][1]:
-            snow_depth[i] = snow_depth[i][0]
-    else:
-        snow_depth[i] = int(snow_depth[i])
-        
-###################Closed Resorts####################
-for i in range(len(open_dates)):
-    open_dates[i] = open_dates[i].replace("Opening ", "")
-    datetime_object = datetime.strptime(open_dates[i], "%Y %b %d")
-    open_dates[i] = datetime_object
     
     
     
 #################################API PART##########################
 ###################################################################
 
+#open cache
 def open_cache(file_name):
     try:
         file = open(file_name, 'r')
@@ -111,13 +27,14 @@ def open_cache(file_name):
         dict_out = {}
     return dict_out
 
+#save cache
 def caching(dict_in, file_name):
     dumped = json.dumps(dict_in)
     file = open(file_name, 'w')
     file.write(dumped)
     file.close()
     
-
+#construct unique sudo url
 def sudo_url(base_url, params):
     sudo_url = base_url + "&"
     for key in params.keys():
@@ -125,11 +42,13 @@ def sudo_url(base_url, params):
             sudo_url = sudo_url + (f'{key}={params[key]}&')
     return sudo_url
 
+#make request
 def make_request(base_url, params):
     response = requests.get(base_url, params=params)
     result = response.json()
     return result
 
+#open cache and check if request in cache
 def cache_control(base_url, params, cache_name="default_cache.json"):
     cache_dict = open_cache(cache_name)
     sudo_url_in = sudo_url(base_url, params)
@@ -140,53 +59,10 @@ def cache_control(base_url, params, cache_name="default_cache.json"):
         cache_dict[sudo_url_in] = result
     caching(cache_dict, cache_name)
     return result
-    
-    
-
-base_url = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
-params = {
-    "fields": "formatted_address,name,rating,opening_hours,geometry",
-    "input": "",
-    "inputtype": "textquery",
-    "contact": "website",
-    "key": secrete.api_key
-}
 
 
-###################################DATA Presentation#############################
-open_dict = {}
-
-for i in range(len(name_list)):
-    params["input"] = name_list[i]
-    result = cache_control(base_url, params)
-    local_dict = {}
-    local_dict["location"] = result["candidates"][0]["geometry"]['location']
-    local_dict["rating"] = result["candidates"][0]["rating"]
-    local_dict["snow_fall"] = snow_fall[i]
-    local_dict["snow_fall_time"] = snow_fall_time[i]
-    local_dict["snow_depth"] = snow_depth[i]
-    local_dict["surface_status"] = surface_status[i]
-    local_dict["update_time"] = update_time[i]
-    local_dict["total_lifts"] = total_lifts[i]
-    local_dict["open_lifts"] = open_lifts[i]
-    local_dict["total_trails"] = total_trails[i]
-    local_dict["open_trails"] = open_trails[i]
-    open_dict[name_list[i]] = local_dict
-
-closed_dict = {}
-
-for i in range(len(closed_resorts)):
-    params["input"] = closed_resorts[i] + " Michigan"
-    result = cache_control(base_url, params)
-    local_dict = {}
-    local_dict["location"] = result["candidates"][0]["geometry"]['location']
-    try:
-        local_dict["rating"] = result["candidates"][0]["rating"]
-    except:
-        local_dict["rating"] = None
-    local_dict["open_dates"] = open_dates[i]
-    closed_dict[closed_resorts[i]] = local_dict
-
+#########NODES and Trees############
+##########For data presentation#############
 ######################Tree Construct#########################
 class Node():
     def __init__(self, left = None, right = None, isQuestion = False, data = None, name = None):
@@ -265,7 +141,151 @@ def getMap(resorts, isOpen = False):
     im = Image.open("maps_temp.png","r")
     im.show()
 
-getMap(closed_dict.keys())
-    
 
+#############The main program of the file################
+if __name__ == '__main__':
+    
+    #read the html file
+    file = open('snow_report.html','rb')
+    html_text = file.read().decode('utf8')
+    soup = BeautifulSoup(html_text, 'html.parser')
+    file.close()
+
+    ################Extracting all open resorts###################
+    #page scraping
+    all_open = soup.find_all('div', class_="styles_outer__3Km0M")
+    name_list = []
+    update_time = []
+    snow_fall = []
+    snow_fall_time = []
+    snow_depth = []
+    surface_status = []
+    open_trails = []
+    open_lifts = []
+    for resorts in all_open:
+        name_list.append(resorts.contents[2].contents[0].contents[0].contents[0].contents[0])
+        update_time.append(resorts.contents[2].contents[0].contents[0].contents[1].contents[0])
+        #Other info resorts.contents[2].contents[0].contents[1]
+        snow_fall.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[1].contents[0])
+        snow_fall_time.append(resorts.contents[2].contents[0].contents[1].contents[0].contents[2].contents[0])
+        snow_depth.append(resorts.contents[2].contents[0].contents[1].contents[1].contents[1].contents[0])
+        surface_status.append(resorts.contents[2].contents[0].contents[1].contents[1].contents[2].contents[0])
+        open_trails.append(resorts.contents[2].contents[0].contents[1].contents[2].contents[1].contents[0])
+        open_lifts.append(resorts.contents[2].contents[0].contents[1].contents[3].contents[1].contents[0])
+        
+
+    ######################Extract all closed resorts####################################
+    all_closed = soup.find_all('div', class_="styles_box__3bpbO")
+    closed_resorts = []
+    open_dates = []
+    for resorts in all_closed:
+        closed_resorts.append(resorts.contents[1].contents[0].contents[0])
+        open_dates.append(resorts.contents[1].contents[1].contents[0])
+
+
+    ########Data Processing###############
+
+    #########Open Resorts##################
+    for i in range(len(snow_fall)):
+        snow_fall[i] = int(snow_fall[i].replace("\"",""))
+
+    total_lifts = []
+    for i in range(len(open_lifts)):
+        two_num = open_lifts[i].split("/")
+        open_lifts[i] = int(two_num[0])
+        total_lifts.append(int(two_num[1]))
+
+    total_trails = []
+    for i in range(len(open_trails)):
+        try:
+            two_num = open_trails[i].split("/")
+            open_trails[i] = int(two_num[0])
+            total_trails.append(int(two_num[1]))
+        except:
+            open_trails[i] = None
+            total_trails.append(None)
+
+    for i in range(len(update_time)):
+        update_time[i] = int(update_time[i].replace(" hours ago", ""))
+        
+    for i in range(len(snow_fall_time)):
+        if (snow_fall_time[i] == "Today"):
+            datetime_object = datetime.strptime("Dec 5 2021", "%b %d %Y")
+        else:
+            datetime_object = datetime.strptime(snow_fall_time[i] + " 2021", "%b %d %Y")
+        snow_fall_time[i] = datetime_object
+        
+    for i in range(len(snow_depth)):
+        snow_depth[i] = snow_depth[i].replace("\"", "")
+        if ("-" in snow_depth[i]):
+            two_num = snow_depth[i].split("-")
+            snow_depth[i] = [int(two_num[0]), int(two_num[1])]
+            if snow_depth[i][0] == snow_depth[i][1]:
+                snow_depth[i] = snow_depth[i][0]
+        else:
+            snow_depth[i] = int(snow_depth[i])
+            
+    ###################Closed Resorts####################
+    for i in range(len(open_dates)):
+        open_dates[i] = open_dates[i].replace("Opening ", "")
+        datetime_object = datetime.strptime(open_dates[i], "%Y %b %d")
+        open_dates[i] = datetime_object
+        
+    #page scraping COMPLETE
+    
+    
+    
+    base_url = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
+    params = {
+        "fields": "formatted_address,name,rating,opening_hours,geometry",
+        "input": "",
+        "inputtype": "textquery",
+        "contact": "website",
+        "key": secrete.api_key
+    }
+
+
+    ###################################DATA Processing#############################
+    
+    #####Data process
+    #processing open resorts data
+    open_dict = {}
+
+    for i in range(len(name_list)):
+        params["input"] = name_list[i]
+        result = cache_control(base_url, params)
+        local_dict = {}
+        local_dict["location"] = result["candidates"][0]["geometry"]['location']
+        local_dict["rating"] = result["candidates"][0]["rating"]
+        local_dict["snow_fall"] = snow_fall[i]
+        local_dict["snow_fall_time"] = snow_fall_time[i]
+        local_dict["snow_depth"] = snow_depth[i]
+        local_dict["surface_status"] = surface_status[i]
+        local_dict["update_time"] = update_time[i]
+        local_dict["total_lifts"] = total_lifts[i]
+        local_dict["open_lifts"] = open_lifts[i]
+        local_dict["total_trails"] = total_trails[i]
+        local_dict["open_trails"] = open_trails[i]
+        open_dict[name_list[i]] = local_dict
+
+    #processing closed resorts data
+    closed_dict = {}
+
+    for i in range(len(closed_resorts)):
+        params["input"] = closed_resorts[i] + " Michigan"
+        result = cache_control(base_url, params)
+        local_dict = {}
+        local_dict["location"] = result["candidates"][0]["geometry"]['location']
+        try:
+            local_dict["rating"] = result["candidates"][0]["rating"]
+        except:
+            local_dict["rating"] = None
+        local_dict["open_dates"] = open_dates[i]
+        closed_dict[closed_resorts[i]] = local_dict
+        
+    #data processing COMPLETE
+    
+    
+    
+    
 print()
