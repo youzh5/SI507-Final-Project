@@ -7,27 +7,8 @@ import json
 from PIL import Image
 
 '''
-class Resort():
-    def __init__(self, resort_name, website = None):
-        self.resort_name = resort_name
-        self.website = website
-        
-class OpenResort(Resort):
-    def __init__(self, resort_name, website, lift_open, total_lift, snow_depth, snow_fall, snow_fall_time, surface_status, total_trails, open_trails):
-        super().__init__(resort_name, website)
-        self.total_lift = total_lift
-        self.lift_open = lift_open
-        self.snow_depth = snow_depth
-        self.snow_fall = snow_fall
-        self.snow_fall_time = snow_fall_time
-        self.surface_status = surface_status
-        self.total_trails = total_trails
-        self.open_trails = open_trails
-        
-class ClosedResort(Resort):
-    def __init__(self, resort_name, website, open_date):
-        super().__init__(resort_name, website)
-        self.open_date = open_date
+This program is for the user to check snow status.
+The program will display location and name of the resort by the user's preference.
 '''        
         
 
@@ -195,7 +176,7 @@ for i in range(len(name_list)):
 closed_dict = {}
 
 for i in range(len(closed_resorts)):
-    params["input"] = closed_resorts[i]
+    params["input"] = closed_resorts[i] + " Michigan"
     result = cache_control(base_url, params)
     local_dict = {}
     local_dict["location"] = result["candidates"][0]["geometry"]['location']
@@ -204,6 +185,7 @@ for i in range(len(closed_resorts)):
     except:
         local_dict["rating"] = None
     local_dict["open_dates"] = open_dates[i]
+    closed_dict[closed_resorts[i]] = local_dict
 
 ######################Tree Construct#########################
 class Node():
@@ -255,23 +237,35 @@ def questionEstablisher():
             
     return current_node
         
-map_base_url = "https://maps.googleapis.com/maps/api/staticmap"
-map_params = {
-    "center": "Ann+Arbor",
-    "zoom": "6",
-    "size": "1200x1200",
-    "maptype": "roadmap",
-    "key": secrete.api_key,
-    "markers": []
-}
+def getMap(resorts, isOpen = False):
+    map_base_url = "https://maps.googleapis.com/maps/api/staticmap"
+    map_params = {
+        "center": "Traverse+City",
+        "zoom": "6",
+        "size": "1200x1200",
+        "maptype": "roadmap",
+        "key": secrete.api_key,
+        "markers": []
+    }
 
-map_params["markers"] = [str(open_dict["Boyne Mountain Resort"]["location"]["lat"]) + "," + str(open_dict["Boyne Mountain Resort"]["location"]["lng"]), \
-    str(open_dict["Ski Brule"]["location"]["lat"]) + "," + str(open_dict["Ski Brule"]["location"]["lng"])]
+    if isOpen:
+        for resort in resorts:
+            map_params["markers"].append(str(open_dict[resort]["location"]["lat"]) + "," \
+                + str(open_dict[resort]["location"]["lng"]))
+    else:
+        for resort in resorts:
+            map_params["markers"].append(str(closed_dict[resort]["location"]["lat"]) + "," \
+                + str(closed_dict[resort]["location"]["lng"]))
+    
+    # map_params["markers"] = [str(open_dict["Boyne Mountain Resort"]["location"]["lat"]) + "," + str(open_dict["Boyne Mountain Resort"]["location"]["lng"]), \
+    #     str(open_dict["Ski Brule"]["location"]["lat"]) + "," + str(open_dict["Ski Brule"]["location"]["lng"])]
 
-response = requests.get(map_base_url, map_params)
-open("maps_temp.png", "wb").write(response.content)
-im = Image.open("maps_temp.png","r")
-im.show()
+    response = requests.get(map_base_url, map_params)
+    open("maps_temp.png", "wb").write(response.content)
+    im = Image.open("maps_temp.png","r")
+    im.show()
+
+getMap(closed_dict.keys())
     
 
 print()
