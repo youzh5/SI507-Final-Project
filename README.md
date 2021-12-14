@@ -17,11 +17,11 @@ Answer yes will point to the left of the branch and answer no will point to the 
 Tree Stucture:  
 
        Q:rating  
-    /            \ 
+  
  R: Nubs        Q:recent snow  
-                /         \ 
+  
             Q:snow depth    Q: most lifts  
-            /       \           /     \ 
+  
           brule     bsr       Holly   Q: total trails  
-                                          /      \ 
+  
                                         Boyne    Brighton  
