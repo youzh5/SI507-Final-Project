@@ -12,4 +12,16 @@ as its variables. The left and right variable will point to the next node. The d
 be a question string or the information of a resort. The name variable will store the name  
 if the node is a resort. isQuestion determines either a node is a question or resort node.  
 The tree is constructed so that questions will be asked until a resort node is reached.  
-Answer yes will point to the left of the branch and answer no will point to the right.
+Answer yes will point to the left of the branch and answer no will point to the right.  
+  
+Tree Stucture:  
+
+       Q:rating  
+    /            \ 
+ R: Nubs        Q:recent snow  
+                /         \ 
+            Q:snow depth    Q: most lifts  
+            /       \           /     \ 
+          brule     bsr       Holly   Q: total trails  
+                                          /      \ 
+                                        Boyne    Brighton  
