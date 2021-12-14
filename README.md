@@ -18,7 +18,7 @@ Tree Stucture:
 
        Q:rating  
   
- R: Nubs        Q:recent snow  
+    R: Nubs        Q:recent snow  
   
             Q:snow depth    Q: most lifts  
   
