@@ -5,10 +5,12 @@ import requests
 from requests.models import Response
 import json
 from PIL import Image
+import pprint
 
 '''
 This program is for the user to check snow status.
 The program will display location and name of the resort by the user's preference.
+All data are scraped on Dec 5th, therefore, all comparison will be based on this date
 '''        
         
     
@@ -112,8 +114,15 @@ def questionEstablisher():
             print("This input is invalid. Please try again.")
             
     return current_node
+
+
+########The final presentation, shows the map##########
+'''
+    NOTE: This requires GUI/graphics forwarding
+    Tested on author's windows10 python 3.7.2 environment and passed
+'''
         
-def getMap(resorts, isOpen = False):
+def getMap(resorts):
     map_base_url = "https://maps.googleapis.com/maps/api/staticmap"
     map_params = {
         "center": "Traverse+City",
@@ -124,14 +133,21 @@ def getMap(resorts, isOpen = False):
         "markers": []
     }
 
-    if isOpen:
-        for resort in resorts:
-            map_params["markers"].append(str(open_dict[resort]["location"]["lat"]) + "," \
-                + str(open_dict[resort]["location"]["lng"]))
-    else:
-        for resort in resorts:
-            map_params["markers"].append(str(closed_dict[resort]["location"]["lat"]) + "," \
-                + str(closed_dict[resort]["location"]["lng"]))
+    # if isOpen:
+    #     for resort in resorts:
+    #         map_params["markers"].append(str(open_dict[resort]["location"]["lat"]) + "," \
+    #             + str(open_dict[resort]["location"]["lng"]))
+    # else:
+    #     for resort in resorts:
+    #         map_params["markers"].append(str(closed_dict[resort]["location"]["lat"]) + "," \
+    #             + str(closed_dict[resort]["location"]["lng"]))
+    
+    total_dict = {}
+    total_dict.update(open_dict)
+    total_dict.update(closed_dict)
+    for resort in resorts:
+        map_params["markers"].append(str(total_dict[resort]["location"]["lat"]) + "," \
+            + str(total_dict[resort]["location"]["lng"]))
     
     # map_params["markers"] = [str(open_dict["Boyne Mountain Resort"]["location"]["lat"]) + "," + str(open_dict["Boyne Mountain Resort"]["location"]["lng"]), \
     #     str(open_dict["Ski Brule"]["location"]["lat"]) + "," + str(open_dict["Ski Brule"]["location"]["lng"])]
@@ -240,7 +256,6 @@ if __name__ == '__main__':
         "fields": "formatted_address,name,rating,opening_hours,geometry",
         "input": "",
         "inputtype": "textquery",
-        "contact": "website",
         "key": secrete.api_key
     }
 
@@ -279,13 +294,118 @@ if __name__ == '__main__':
         try:
             local_dict["rating"] = result["candidates"][0]["rating"]
         except:
-            local_dict["rating"] = None
+            local_dict["rating"] = 0
         local_dict["open_dates"] = open_dates[i]
         closed_dict[closed_resorts[i]] = local_dict
         
     #data processing COMPLETE
     
+    ###########DATA presentation###########
+    total_dict = {}
+    total_dict.update(open_dict)
+    total_dict.update(closed_dict)
+    total_list = [(k, v) for k, v in total_dict.items()]
     
+    ######bubble sort acording to the ratings#####
+    for pass_num in range(len(total_list)-1, 0, -1):
+        for i in range(pass_num):
+            if (total_list[i][1]["rating"] < total_list[i+1][1]["rating"]):
+                temp = total_list[i]
+                total_list[i] = total_list[i+1]
+                total_list[i+1] = temp
     
+    highest_rating = [name for name, data in total_list][0:5]
     
-print()
+    ########Find close resorts that will be open in 10 days#########
+    def lookAhead(day):
+        today = datetime.strptime("Dec 5 2021", "%b %d %Y")
+        filtered = []
+        standard = 60*24*int(day) #10 days to minutes
+        for k, v in closed_dict.items():
+            if (v["open_dates"] - today).total_seconds()/60 < standard:
+                filtered.append(k)
+        return filtered
+    ########Find closest open resort#####################
+    def find_closesest(zip):
+        closest = list(open_dict.keys())[0]
+        base_url = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
+        params = {
+            "fields": "formatted_address,name,rating,opening_hours,geometry",
+            "input": zip,
+            "inputtype": "textquery",
+            "key": secrete.api_key
+        }
+        result = cache_control(base_url, params)
+        location = result["candidates"][0]["geometry"]['location']
+        min_dis = 1024 #fake distance
+        for k, v in open_dict.items():
+            lat_diff = location["lat"] - v["location"]["lat"]
+            lng_diff = location["lng"] - v["location"]["lng"]
+            dis = lat_diff**2 + lng_diff**2
+            if dis < min_dis:
+                min_dis = dis
+                closest = k
+        return closest
+    
+    ###############Qeustion Tree Recommendation############
+    #######Please refer to the question tree function######
+    
+    ##############Main Program################
+    started = False
+    while True:
+        print()
+        if not started:
+            print("It's time for snow season! I got some information of ski resorts in Michigan for you.")
+            print("Please choose mode:")
+            print()
+            print("1. Show resorts with the highest ratings in Michigan")
+            print("2. Show the closed resorts that will open in the next choosing number of days")
+            print("3. Find the closes resort")
+            print("4. I need som recommendation")
+            print("5. I want to check more specific info")
+            print()
+        user_in = input("Please enter mode number or type \"exit\":    ")
+        print()
+        started = True
+        if user_in == "1":
+            print(f'The resorts with highest ratings are {highest_rating}. Showing them in the map.')
+            getMap(highest_rating)
+        elif user_in == "2":
+            day = input("In how many days do you want to look for?    ")
+            if day.isdigit():
+                filtered = lookAhead(day)
+                print(f'The resorts are going to be open in the next {day} days are {filtered}')
+                print("Showing locations on the map.")
+                getMap(filtered)
+            else:
+                print("This input is not valid. Please try again.")
+        elif user_in == "3":
+            addr = input("Please type in your arress:  ")
+            closest = find_closesest(addr)
+            print(f'The resort closes to you is {closest}')
+            print("Showing location on the map.")
+            getMap([closest])
+        elif user_in == "4":
+            print("Recommendation process initiated!")
+            name = questionEstablisher()
+            print(f'You might like {name.name}!')
+            getMap([name.name])
+        elif user_in.lower() == "exit":
+            print("Bye! Thanks for using!")
+            break
+        elif user_in == '5':
+            while True:
+                found = False
+                name = input("Please type in a name for more info or type \"exit\":    ")
+                if name.lower() == "exit":
+                    break
+                for k, v in total_dict.items():
+                    if name.lower() == k.lower():
+                        pprint.pprint(v)
+                        print("Showing location on the map.")
+                        getMap([k])
+                        found = True
+                if not found:
+                    print("This resort is not found in the database. Please try again.")
+        else:
+            print("This input is illegal. Please try again.")
