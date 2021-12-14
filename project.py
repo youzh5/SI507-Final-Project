@@ -160,7 +160,6 @@ def getMap(resorts):
 
 #############The main program of the file################
 if __name__ == '__main__':
-    
     #read the html file
     file = open('snow_report.html','rb')
     html_text = file.read().decode('utf8')
@@ -374,13 +373,16 @@ if __name__ == '__main__':
             day = input("In how many days do you want to look for?    ")
             if day.isdigit():
                 filtered = lookAhead(day)
-                print(f'The resorts are going to be open in the next {day} days are {filtered}')
-                print("Showing locations on the map.")
-                getMap(filtered)
+                if len(filtered) != 0:
+                    print(f'The resorts are going to be open in the next {day} days are {filtered}')
+                    print("Showing locations on the map.")
+                    getMap(filtered)
+                else:
+                    print("No resort found. Please try again.")
             else:
                 print("This input is not valid. Please try again.")
         elif user_in == "3":
-            addr = input("Please type in your arress:  ")
+            addr = input("Please type in your address:  ")
             closest = find_closesest(addr)
             print(f'The resort closes to you is {closest}')
             print("Showing location on the map.")
@@ -409,3 +411,12 @@ if __name__ == '__main__':
                     print("This resort is not found in the database. Please try again.")
         else:
             print("This input is illegal. Please try again.")
+            
+            
+    ##########Dump the open_dict so that the info can be used in seperate tree file
+    for k, v in open_dict.items():
+        v["snow_fall_time"] = v["snow_fall_time"].strftime("%m/%d/%y")
+    dumped = json.dumps(open_dict)
+    file = open("open_cach.json", 'w')
+    file.write(dumped)
+    file.close()
